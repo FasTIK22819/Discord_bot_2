@@ -6,6 +6,7 @@ from discord.utils import get
 from discord import FFmpegPCMAudio
 from discord import TextChannel
 from youtube_dl import YoutubeDL
+from config import TOKEN
 
 load_dotenv()
 # назначение префикса для команд
@@ -42,17 +43,21 @@ async def leave(ctx):
 
 
 class MyView(discord.ui.View):
-    @discord.ui.button(label=">>", row=0, style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="<< камень", row=1, style=discord.ButtonStyle.primary)
     async def first_button_callback(self, interaction, button):
         await interaction.response.send_message("You pressed me!")
 
-    @discord.ui.button(label="STOP", row=1, style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Остановить охоту на мамонтов", row=1, style=discord.ButtonStyle.danger)
     async def stop_button(self, interaction, button):
         await interaction.response.send_message("You stoped me!")
 
-    @discord.ui.button(label="<<", row=1, style=discord.ButtonStyle.primary)
+
+    @discord.ui.button(label="кость >>", row=1, style=discord.ButtonStyle.blurple)
     async def second_button_callback(self, interaction, button):
         await interaction.response.send_message("You pressed me!")
+
+
+
 # команда для воспроизведения звука с URL-адреса youtube
 
 
@@ -65,16 +70,13 @@ async def play(ctx, url):
 
     if not voice.is_playing():
         with YoutubeDL(YDL_OPTIONS) as ydl:
-            if 'https://' in url:
-                info = ydl.extract_info(url, download=False)
-            else:
-                info = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
+            info = ydl.extract_info(url, download=False)
         URL = info['url']
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
         await ctx.send('ОНО РАБОТАЕТ!!! 0_0', view=MyView())
 
-    # бот уже играет музыку
+        # бот уже играет музыку
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
@@ -103,9 +105,7 @@ async def pause(ctx):
 # команда для остановки звука
 @client.command()
 async def stop(ctx):
-    print('123' + ctx + '1234')
     voice = get(client.voice_clients, guild=ctx.guild)
-
     if voice.is_playing():
         voice.stop()
         await ctx.send('Музыка OF...')
@@ -117,7 +117,5 @@ async def clear(ctx, amount):
     await ctx.channel.purge(limit=int(amount))
     await ctx.send(f"Очистка мусора завершена (удалено {amount} последних сообщений)")
 
-
-TOKEN = 'MTIyOTY5MjU0NDU0MDA4MjIxNg.G2VSuV.KJrszV_jouUZiLiI7VGQ7WJ5cepyZSzZI_MMbs'
 
 client.run(TOKEN)
