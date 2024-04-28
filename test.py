@@ -99,7 +99,7 @@ async def play(ctx, url, name_title=None):
         name = info['title']
         name = ''.join(name.split())
 
-        # добавление трека в в плейлист
+        # добавление трека в плейлист
         if name_title and count == 0:
             a = 0
             with open('musics.csv', mode='r', encoding='utf-8') as m_file:
