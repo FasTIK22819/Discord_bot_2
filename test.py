@@ -87,59 +87,61 @@ async def play(ctx, url, name_title=None):
     else:
         voice = await channel.connect()
 
-    count = 0
-    # проверка плейлиста
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-        i = 0
-        for row in file_reader:
-            i += 1
-            if url == row[-1]:
-                await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
-                line = i
-                count += 1
-            if url == row[0]:
-                url = row[-1]
-                line = i
-    const.line = line
-    try:
-        with YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
-    except Exception:
-        await ctx.send('Ошибка! Нет такого имени')
-    name = info['title']
-    name = ''.join(name.split())
-
-    # добавление трека в плейлист
-    if name_title and count == 0:
-        a = 0
+    if not voice.is_playing():
+        count = 0
+        # проверка плейлиста
         with open('musics.csv', mode='r', encoding='utf-8') as m_file:
             file_reader = csv.reader(m_file)
+            i = 0
             for row in file_reader:
-                if row == ["название", "ссылка"]:
-                    pass
-                else:
-                    if name_title in row:
-                        if name_title == row[0]:
-                            await ctx.send("Это название уже используется, придумайте другое")
-                            a += 1
-                    else:
-                        if a == 0:
-                            with open('musics.csv', mode='a', encoding='utf-8') as m_file:
-                                names = ["название", "ссылка"]
-                                file_writer = csv.DictWriter(m_file, delimiter=",", lineterminator="\r",
-                                                             fieldnames=names)
-                                file_writer.writerow({"название": name_title, "ссылка": url})
-                                a += 1
+                i += 1
+                if url == row[-1]:
+                    await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
+                    line = i
+                    count += 1
+                if url == row[0]:
+                    url = row[-1]
+                    line = i
+        const.line = line
+        try:
+            with YoutubeDL(YDL_OPTIONS) as ydl:
+                info = ydl.extract_info(url, download=False)
+        except Exception:
+            await ctx.send('Ошибка! Нет такого имени')
+        name = info['title']
+        name = ''.join(name.split())
 
-    URL = info['url']
-    spisok_mus.append(URL)
-    while True:
-        for el in spisok_mus:
-            voice.play(discord.FFmpegPCMAudio(el, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
-            voice.is_playing()
+        # добавление трека в плейлист
+        if name_title and count == 0:
+            a = 0
+            with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+                file_reader = csv.reader(m_file)
+                for row in file_reader:
+                    if row == ["название", "ссылка"]:
+                        pass
+                    else:
+                        if name_title in row:
+                            if name_title == row[0]:
+                                await ctx.send("Это название уже используется, придумайте другое")
+                                a += 1
+                        else:
+                            if a == 0:
+                                with open('musics.csv', mode='a', encoding='utf-8') as m_file:
+                                    names = ["название", "ссылка"]
+                                    file_writer = csv.DictWriter(m_file, delimiter=",", lineterminator="\r",
+                                                                 fieldnames=names)
+                                    file_writer.writerow({"название": name_title, "ссылка": url})
+                                    a += 1
+
+        URL = info['url']
+        spisok_mus.append(URL)
+        voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
+        voice.is_playing()
         await ctx.send(f'ОНО РАБОТАЕТ!!! 0_0 (играет - {url})', view=MyView(ctx))
+    else:
+        await ctx.send("Бот уже играет другую музыку")
         return
+
 
 
 # Пропуск песни
