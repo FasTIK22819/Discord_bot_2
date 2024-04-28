@@ -14,6 +14,7 @@ load_dotenv()
 # назначение префикса для команд
 client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
 players = {}
+spisok_mus = []
 
 
 # with open('musics.csv', mode='w', encoding='utf-8') as m_file:
@@ -57,17 +58,17 @@ class MyView(discord.ui.View):
         super().__init__()
         self.ctx = ctx
 
-    @discord.ui.button(label="<< камень", row=1, style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="<<", row=1, style=discord.ButtonStyle.primary)
     async def first_button_callback(self, interaction, button):
-        await interaction.response.send_message("You pressed me!")
+        await back_from_button(self.ctx)
 
-    @discord.ui.button(label="Остановить охоту на мамонтов", row=1, style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Остановить", row=1, style=discord.ButtonStyle.danger)
     async def stop_button(self, interaction, button):
         await stop_from_button(self.ctx)
 
-    @discord.ui.button(label="кость >>", row=1, style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label=">>", row=1, style=discord.ButtonStyle.blurple)
     async def second_button_callback(self, interaction, button):
-        await interaction.response.send_message("You pressed me!")
+        await forward_from_button(self.ctx)
 
 
 # команда для воспроизведения звука с URL-адреса youtube
@@ -86,64 +87,64 @@ async def play(ctx, url, name_title=None):
     else:
         voice = await channel.connect()
 
-    if not voice.is_playing():
-        count = 0
-        # проверка плейлиста
+    count = 0
+    # проверка плейлиста
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+        i = 0
+        for row in file_reader:
+            i += 1
+            if url == row[-1]:
+                await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
+                line = i
+                count += 1
+            if url == row[0]:
+                url = row[-1]
+                line = i
+    const.line = line
+    try:
+        with YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception:
+        await ctx.send('Ошибка! Нет такого имени')
+    name = info['title']
+    name = ''.join(name.split())
+
+    # добавление трека в плейлист
+    if name_title and count == 0:
+        a = 0
         with open('musics.csv', mode='r', encoding='utf-8') as m_file:
             file_reader = csv.reader(m_file)
-            i = 0
             for row in file_reader:
-                i += 1
-                if url == row[-1]:
-                    await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
-                    line = i
-                    count += 1
-                if url == row[0]:
-                    url = row[-1]
-                    line = i
-        const.line = line
-        try:
-            with YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(url, download=False)
-        except Exception:
-            await ctx.send('Ошибка! Нет такого имени')
-        name = info['title']
-        name = ''.join(name.split())
-
-        # добавление трека в плейлист
-        if name_title and count == 0:
-            a = 0
-            with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-                file_reader = csv.reader(m_file)
-                for row in file_reader:
-                    if row == ["название", "ссылка"]:
-                        pass
+                if row == ["название", "ссылка"]:
+                    pass
+                else:
+                    if name_title in row:
+                        if name_title == row[0]:
+                            await ctx.send("Это название уже используется, придумайте другое")
+                            a += 1
                     else:
-                        if name_title in row:
-                            if name_title == row[0]:
-                                await ctx.send("Это название уже используется, придумайте другое")
+                        if a == 0:
+                            with open('musics.csv', mode='a', encoding='utf-8') as m_file:
+                                names = ["название", "ссылка"]
+                                file_writer = csv.DictWriter(m_file, delimiter=",", lineterminator="\r",
+                                                             fieldnames=names)
+                                file_writer.writerow({"название": name_title, "ссылка": url})
                                 a += 1
-                        else:
-                            if a == 0:
-                                with open('musics.csv', mode='a', encoding='utf-8') as m_file:
-                                    names = ["название", "ссылка"]
-                                    file_writer = csv.DictWriter(m_file, delimiter=",", lineterminator="\r",
-                                                                 fieldnames=names)
-                                    file_writer.writerow({"название": name_title, "ссылка": url})
-                                    a += 1
 
-        URL = info['url']
-        voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
-        voice.is_playing()
+    URL = info['url']
+    spisok_mus.append(URL)
+    while True:
+        for el in spisok_mus:
+            voice.play(discord.FFmpegPCMAudio(el, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
+            voice.is_playing()
         await ctx.send(f'ОНО РАБОТАЕТ!!! 0_0 (играет - {url})', view=MyView(ctx))
-    # бот уже играет музыку
-    else:
-        await ctx.send("Бот уже играет другую музыку")
         return
 
 
+# Пропуск песни
 @client.command()
-async def forward(ctx):
+async def forward_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
@@ -162,8 +163,9 @@ async def forward(ctx):
         await play(const.ctx_p, url)
 
 
+# Предыдущая песня
 @client.command()
-async def back(ctx):
+async def back_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
@@ -213,6 +215,7 @@ async def pause(ctx):
         await ctx.send('Бот отдыхает')
 
 
+# Остановка бота
 async def stop_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
