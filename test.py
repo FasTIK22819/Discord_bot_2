@@ -58,23 +58,23 @@ class MyView(discord.ui.View):
         super().__init__()
         self.ctx = ctx
 
-    @discord.ui.button(label="<<", row=1, style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="<<", row=1, style=discord.ButtonStyle.primary, emoji='⏪')
     async def first_button_callback(self, interaction, button):
         await back_from_button(self.ctx)
 
-    @discord.ui.button(label="Остановить", row=1, style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Остановить", row=1, style=discord.ButtonStyle.danger, emoji='⏺️')
     async def stop_button(self, interaction, button):
         await stop_from_button(self.ctx)
 
-    @discord.ui.button(label="Пауза", row=2, style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Пауза", row=1, style=discord.ButtonStyle.green, emoji='⏸️')
     async def pause_button(self, interaction, button):
         await pause_from_button(self.ctx)
 
-    @discord.ui.button(label="Продолжить", row=2, style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Продолжить", row=1, style=discord.ButtonStyle.green, emoji='▶️')
     async def resume_button(self, interaction, button):
         await resume_from_button(self.ctx)
 
-    @discord.ui.button(label=">>", row=1, style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label=">>", row=1, style=discord.ButtonStyle.blurple, emoji='⏩')
     async def second_button_callback(self, interaction, button):
         await forward_from_button(self.ctx)
 
@@ -95,7 +95,7 @@ async def play(ctx, url, name_title=None):
     else:
         voice = await channel.connect()
 
-    if voice.is_playing():
+    if not voice.is_playing():
         count = 0
         # проверка плейлиста
         with open('musics.csv', mode='r', encoding='utf-8') as m_file:
@@ -105,12 +105,11 @@ async def play(ctx, url, name_title=None):
                 i += 1
                 if url == row[-1]:
                     await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
-                    line = i
+                    const.line = i
                     count += 1
                 if url == row[0]:
                     url = row[-1]
-                    line = i
-        const.line = line
+                    const.line = i
         try:
             with YoutubeDL(YDL_OPTIONS) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -145,13 +144,10 @@ async def play(ctx, url, name_title=None):
         spisok_mus.append(URL)
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
-        await ctx.send(f'ОНО РАБОТАЕТ!!! 0_0 (играет - {url})', view=MyView(ctx))
+        await ctx.send(f'ОНО РАБОТАЕТ!!! 🔊 (играет - {url}) 🎵', view=MyView(ctx))
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
-
-
-
 
 
 # Пропуск песни
@@ -224,7 +220,7 @@ async def pause(ctx):
 
     if voice.is_playing():
         voice.pause()
-        await ctx.send('Бот отдыхает')
+        await ctx.send('Бот отдыхает 🔈')
 
 
 # Остановка бота
@@ -232,7 +228,7 @@ async def stop_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.stop()
-        await ctx.send(f'Музыка OF...')
+        await ctx.send(f'Музыка OF 🔇')
 
 
 async def forward_from_button(ctx):
@@ -278,7 +274,7 @@ async def pause_from_button(ctx):
 
     if voice.is_playing():
         voice.pause()
-        await ctx.send('Бот отдыхает')
+        await ctx.send('Бот отдыхает ')
 
 
 async def resume_from_button(ctx):
@@ -295,7 +291,7 @@ async def stop(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.stop()
-        await ctx.send(f'Музыка OF')
+        await ctx.send(f'Музыка OF 🔇')
 
 
 # команда для очистки сообщений канала
