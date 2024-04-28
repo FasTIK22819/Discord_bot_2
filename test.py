@@ -66,6 +66,14 @@ class MyView(discord.ui.View):
     async def stop_button(self, interaction, button):
         await stop_from_button(self.ctx)
 
+    @discord.ui.button(label="Пауза", row=2, style=discord.ButtonStyle.green)
+    async def pause_button(self, interaction, button):
+        await pause_from_button(self.ctx)
+
+    @discord.ui.button(label="Продолжить", row=2, style=discord.ButtonStyle.green)
+    async def resume_button(self, interaction, button):
+        await resume_from_button(self.ctx)
+
     @discord.ui.button(label=">>", row=1, style=discord.ButtonStyle.blurple)
     async def second_button_callback(self, interaction, button):
         await forward_from_button(self.ctx)
@@ -87,7 +95,7 @@ async def play(ctx, url, name_title=None):
     else:
         voice = await channel.connect()
 
-    if not voice.is_playing():
+    if voice.is_playing():
         count = 0
         # проверка плейлиста
         with open('musics.csv', mode='r', encoding='utf-8') as m_file:
@@ -141,6 +149,8 @@ async def play(ctx, url, name_title=None):
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
+
+
 
 
 
@@ -261,6 +271,22 @@ async def back_from_button(ctx):
                 break
         url = row_new[0]
         await play(const.ctx_p, url)
+
+
+async def pause_from_button(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+
+    if voice.is_playing():
+        voice.pause()
+        await ctx.send('Бот отдыхает')
+
+
+async def resume_from_button(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+
+    if not voice.is_playing():
+        voice.resume()
+        await ctx.send('Бот готов продолжить пахать')
 
 
 # команда для остановки звука
