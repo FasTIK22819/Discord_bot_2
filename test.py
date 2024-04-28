@@ -144,7 +144,7 @@ async def play(ctx, url, name_title=None):
 
 # Пропуск песни
 @client.command()
-async def forward_from_button(ctx):
+async def forward(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
@@ -165,7 +165,7 @@ async def forward_from_button(ctx):
 
 # Предыдущая песня
 @client.command()
-async def back_from_button(ctx):
+async def back(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
@@ -221,6 +221,44 @@ async def stop_from_button(ctx):
     if voice.is_playing():
         voice.stop()
         await ctx.send(f'Музыка OF...')
+
+
+async def forward_from_button(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+    voice.stop()
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+
+        line_next = const.line + 1
+        if line_next > const.len_sp:
+            line_next = 2
+        count = 0
+        for row in file_reader:
+            count += 1
+            if count == line_next:
+                row_new = row
+                break
+        url = row_new[0]
+        await play(const.ctx_p, url)
+
+
+async def back_from_button(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+    voice.stop()
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+
+        line_next = const.line - 1
+        if line_next <= 1:
+            line_next = const.len_sp
+        count = 0
+        for row in file_reader:
+            count += 1
+            if count == line_next:
+                row_new = row
+                break
+        url = row_new[0]
+        await play(const.ctx_p, url)
 
 
 # команда для остановки звука
