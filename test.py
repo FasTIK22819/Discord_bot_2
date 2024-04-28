@@ -8,6 +8,7 @@ from discord import FFmpegPCMAudio
 from discord import TextChannel
 from youtube_dl import YoutubeDL
 from config import TOKEN
+import disnake
 import const
 
 load_dotenv()
@@ -26,7 +27,6 @@ spisok_mus = []
 
 # Проверка коммита
 # проверка готовности бота к работе
-
 @client.event
 async def on_ready():
     print(f'Бот {client.user.name} готов пахать!')
@@ -58,7 +58,7 @@ class MyView(discord.ui.View):
         super().__init__()
         self.ctx = ctx
 
-    @discord.ui.button(label="<<", row=1, style=discord.ButtonStyle.primary, emoji='⏪')
+    @discord.ui.button(label="", row=1, style=discord.ButtonStyle.primary, emoji='⏪')
     async def first_button_callback(self, interaction, button):
         await back_from_button(self.ctx)
 
@@ -74,7 +74,7 @@ class MyView(discord.ui.View):
     async def resume_button(self, interaction, button):
         await resume_from_button(self.ctx)
 
-    @discord.ui.button(label=">>", row=1, style=discord.ButtonStyle.blurple, emoji='⏩')
+    @discord.ui.button(label="", row=1, style=discord.ButtonStyle.blurple, emoji='⏩')
     async def second_button_callback(self, interaction, button):
         await forward_from_button(self.ctx)
 
@@ -116,7 +116,6 @@ async def play(ctx, url, name_title=None):
         except Exception:
             await ctx.send('Ошибка! Нет такого имени')
         name = info['title']
-        name = ''.join(name.split())
 
         # добавление трека в плейлист
         if name_title and count == 0:
@@ -145,6 +144,10 @@ async def play(ctx, url, name_title=None):
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
         await ctx.send(f'ОНО РАБОТАЕТ!!! 🔊 (играет - {url}) 🎵', view=MyView(ctx))
+        embed = disnake.Embed(title='диджей', description=f"музыка {name}",
+                              color=0x228b22)
+        embed.add_field(name="Включил:", value=f"@{ctx.author.name}")
+        await ctx.send(embed=embed)
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
@@ -229,6 +232,10 @@ async def stop_from_button(ctx):
     if voice.is_playing():
         voice.stop()
         await ctx.send(f'Музыка OF 🔇')
+        embed = disnake.Embed(title='диджей',
+                              color=0x228b22)
+        embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
+        await ctx.send(embed=embed)
 
 
 async def forward_from_button(ctx):
@@ -292,6 +299,10 @@ async def stop(ctx):
     if voice.is_playing():
         voice.stop()
         await ctx.send(f'Музыка OF 🔇')
+        embed = disnake.Embed(title='диджей',
+                              color=0x228b22)
+        embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
+        await ctx.send(embed=embed)
 
 
 # команда для очистки сообщений канала
