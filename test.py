@@ -8,6 +8,7 @@ from discord import FFmpegPCMAudio
 from discord import TextChannel
 from youtube_dl import YoutubeDL
 from config import TOKEN
+import const
 
 load_dotenv()
 # назначение префикса для команд
@@ -50,6 +51,7 @@ async def leave(ctx):
         await voice.disconnect()
 
 
+# класс кнопок
 class MyView(discord.ui.View):
     def __init__(self, ctx):
         super().__init__()
@@ -71,6 +73,7 @@ class MyView(discord.ui.View):
 # команда для воспроизведения звука с URL-адреса youtube
 @client.command()
 async def play(ctx, url, name_title=None):
+    const.ctx_p = ctx
     YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
     FFMPEG_OPTIONS = {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
@@ -88,14 +91,22 @@ async def play(ctx, url, name_title=None):
         # проверка плейлиста
         with open('musics.csv', mode='r', encoding='utf-8') as m_file:
             file_reader = csv.reader(m_file)
+            i = 0
             for row in file_reader:
+                i += 1
                 if url == row[-1]:
                     await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
+                    line = i
                     count += 1
                 if url == row[0]:
                     url = row[-1]
-        with YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
+                    line = i
+        const.line = line
+        try:
+            with YoutubeDL(YDL_OPTIONS) as ydl:
+                info = ydl.extract_info(url, download=False)
+        except Exception:
+            await ctx.send('Ошибка! Нет такого имени')
         name = info['title']
         name = ''.join(name.split())
 
@@ -124,11 +135,62 @@ async def play(ctx, url, name_title=None):
         URL = info['url']
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
-        await ctx.send('ОНО РАБОТАЕТ!!! 0_0', view=MyView(ctx))
+        await ctx.send(f'ОНО РАБОТАЕТ!!! 0_0 (играет - {url})', view=MyView(ctx))
     # бот уже играет музыку
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
+
+
+@client.command()
+async def forward(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+    voice.stop()
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+
+        line_next = const.line + 1
+        if line_next > const.len_sp:
+            line_next = 2
+        count = 0
+        for row in file_reader:
+            count += 1
+            if count == line_next:
+                row_new = row
+                break
+        url = row_new[0]
+        await play(const.ctx_p, url)
+
+
+@client.command()
+async def back(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+    voice.stop()
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+
+        line_next = const.line - 1
+        if line_next <= 1:
+            line_next = const.len_sp
+        count = 0
+        for row in file_reader:
+            count += 1
+            if count == line_next:
+                row_new = row
+                break
+        url = row_new[0]
+        await play(const.ctx_p, url)
+
+
+# команда показать плейлист
+@client.command()
+async def playlist(ctx):
+    m = []
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+        for row in file_reader:
+            m.append(' '.join(row))
+        await ctx.send('\n'.join(m))
 
 
 # команда для возобновления голосовой связи, если она была приостановлена
