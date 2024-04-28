@@ -57,9 +57,7 @@ class MyView(discord.ui.View):
 
     @discord.ui.button(label="Остановить охоту на мамонтов", row=1, style=discord.ButtonStyle.danger)
     async def stop_button(self, interaction, button):
-        await interaction.response.send_message("You stoped me!")
-        print(interaction)
-        await stop()
+        await interaction.response.send_message("You stoped me!", view=stop())
 
     @discord.ui.button(label="кость >>", row=1, style=discord.ButtonStyle.blurple)
     async def second_button_callback(self, interaction, button):
@@ -87,20 +85,13 @@ async def play(ctx, url, name_title=None):
         with open('musics.csv', mode='r', encoding='utf-8') as m_file:
             file_reader = csv.reader(m_file)
             for row in file_reader:
-                if row == ["название", "ссылка"]:
-                    pass
-                else:
-                    if url == row[-1]:
-                        await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
-                        count += 1
-                    if url == row[0]:
-                        url = row[-1]
-        try:
-            with YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(url, download=False)
-        except Exception:
-            await ctx.send("Ошибка! Такого названия нет в списке")
-
+                if url == row[-1]:
+                    await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
+                    count += 1
+                if url == row[0]:
+                    url = row[-1]
+        with YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(url, download=False)
         name = info['title']
         name = ''.join(name.split())
 
@@ -125,6 +116,7 @@ async def play(ctx, url, name_title=None):
                                                                  fieldnames=names)
                                     file_writer.writerow({"название": name_title, "ссылка": url})
                                     a += 1
+
         URL = info['url']
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
@@ -133,18 +125,6 @@ async def play(ctx, url, name_title=None):
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
-
-
-@client.command()
-async def playlist(ctx):
-    m = []
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-        for row in file_reader:
-            m.append(' '.join(row))
-        await ctx.send('\n'.join(m))
-
-
 
 
 # команда для возобновления голосовой связи, если она была приостановлена
@@ -174,7 +154,6 @@ async def stop(ctx):
     if voice.is_playing():
         voice.stop()
         await ctx.send(f'Музыка OF')
-        print(ctx)
 
 
 # команда для очистки сообщений канала
