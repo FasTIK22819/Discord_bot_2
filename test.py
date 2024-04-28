@@ -7,7 +7,7 @@ from discord import FFmpegPCMAudio
 from discord import TextChannel
 from youtube_dl import YoutubeDL
 from config import TOKEN
-from discord import Button, ButtonStyle
+from discord.components import Button, ButtonStyle
 
 load_dotenv()
 # назначение префикса для команд
@@ -44,13 +44,17 @@ async def leave(ctx):
 
 
 class MyView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__()
+        self.ctx = ctx
+
     @discord.ui.button(label="<< камень", row=1, style=discord.ButtonStyle.primary)
     async def first_button_callback(self, interaction, button):
         await interaction.response.send_message("You pressed me!")
 
     @discord.ui.button(label="Остановить охоту на мамонтов", row=1, style=discord.ButtonStyle.danger)
     async def stop_button(self, interaction, button):
-        await interaction.response.send_message("You stopped me!")
+        await stop_from_button(self.ctx)
 
     @discord.ui.button(label="кость >>", row=1, style=discord.ButtonStyle.blurple)
     async def second_button_callback(self, interaction, button):
@@ -73,15 +77,7 @@ async def play(ctx, url):
         URL = info['url']
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
-        await ctx.send(
-            embed=discord.Embed(title="все возможные пути"),
-            components=[
-                Button(style=ButtonStyle.green, label="1")
-            ]
-        )
-        response = await client.wait_for("button_click")
-        if response.channel == ctx.channel:
-            await stop_from_button(ctx)
+        await ctx.send('Работает', view=MyView(ctx))
 
         # бот уже играет музыку
     else:
