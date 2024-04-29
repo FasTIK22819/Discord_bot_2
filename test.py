@@ -43,7 +43,8 @@ async def join(ctx):
             title="",
             color=0xe100ff,
             description=f"вход")
-        embed.set_image(url=f'https://cdna.artstation.com/p/assets/images/images/008/710/076/original/gabriel-casamasso-turntable.gif?1514763325')
+        embed.set_image(
+            url=f'https://cdna.artstation.com/p/assets/images/images/008/710/076/original/gabriel-casamasso-turntable.gif?1514763325')
         embed.set_footer(text=f"Команду запросил {ctx.author.name}")
         await ctx.send(embed=embed)
     else:
@@ -56,7 +57,6 @@ async def join(ctx):
             url=f'https://cdna.artstation.com/p/assets/images/images/008/710/076/original/gabriel-casamasso-turntable.gif?1514763325')
         embed.set_footer(text=f"Команду запросил {ctx.author.name}")
         await ctx.send(embed=embed)
-
 
 
 # команда изгнать бота из голосового канала
@@ -74,25 +74,52 @@ class MyView(discord.ui.View):
         super().__init__()
         self.ctx = ctx
 
+    # кнопка назад
     @discord.ui.button(label="", row=1, style=discord.ButtonStyle.primary, emoji='⏪')
     async def first_button_callback(self, interaction, button):
         await back_from_button(self.ctx)
 
+    # кнопка стоп
     @discord.ui.button(label="Остановить", row=1, style=discord.ButtonStyle.danger, emoji='⏺️')
     async def stop_button(self, interaction, button):
         await stop_from_button(self.ctx)
 
+    # кнопка паузы
     @discord.ui.button(label="Пауза", row=1, style=discord.ButtonStyle.green, emoji='⏸️')
     async def pause_button(self, interaction, button):
         await pause_from_button(self.ctx)
 
+    # кнопка продолжить
     @discord.ui.button(label="Продолжить", row=1, style=discord.ButtonStyle.green, emoji='▶️')
     async def resume_button(self, interaction, button):
         await resume_from_button(self.ctx)
 
+    # кнопка вперед
     @discord.ui.button(label="", row=1, style=discord.ButtonStyle.blurple, emoji='⏩')
     async def second_button_callback(self, interaction, button):
         await forward_from_button(self.ctx)
+
+    # кнопка плейлист
+    @discord.ui.button(label="Плейлист", row=2, style=discord.ButtonStyle.blurple, emoji='🎶')
+    async def list_button_callback(self, interaction, button):
+        await playlist_from_button(self.ctx)
+
+
+# меню 2
+class MyView_menu(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__()
+        self.ctx = ctx
+
+    # кнопка плейлист
+    @discord.ui.button(label="Плейлист", row=2, style=discord.ButtonStyle.blurple, emoji='🎶')
+    async def list_button_callback(self, interaction, button):
+        await playlist_from_button(self.ctx)
+
+    # кнопка, при нажатии играет 1-я песня из плейлиста
+    @discord.ui.button(label="Плей", row=3, style=discord.ButtonStyle.blurple, emoji='🎧')
+    async def play_button_callback(self, interaction, button):
+        await play_from_button(self.ctx)
 
 
 # команда для воспроизведения звука с URL-адреса youtube
@@ -105,11 +132,14 @@ async def play(ctx, url, name_title=None):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     # вход в голосовой канал
-    channel = ctx.message.author.voice.channel
-    if voice and voice.is_connected():
-        await voice.move_to(channel)
-    else:
-        voice = await channel.connect()
+    try:
+        channel = ctx.message.author.voice.channel
+        if voice and voice.is_connected():
+            await voice.move_to(channel)
+        else:
+            voice = await channel.connect()
+    except Exception:
+        await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
 
     if not voice.is_playing():
         count = 0
@@ -146,6 +176,7 @@ async def play(ctx, url, name_title=None):
                             if name_title == row[0]:
                                 await ctx.send("Это название уже используется, придумайте другое")
                                 a += 1
+                                break
                         else:
                             if a == 0:
                                 with open('musics.csv', mode='a', encoding='utf-8') as m_file:
@@ -154,26 +185,26 @@ async def play(ctx, url, name_title=None):
                                                                  fieldnames=names)
                                     file_writer.writerow({"название": name_title, "ссылка": url})
                                     a += 1
+                                    break
 
         URL = info['url']
         spisok_mus.append(URL)
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
+        # информация кто использовал команду
         embed = disnake.Embed(title='диджей', description=f"музыка {name}",
                               color=0x228b22)
         embed.set_image(
             url=f'https://i.pinimg.com/originals/82/83/c7/8283c7b7b68f765e2b3bf46fe9c3682f.gif')
         embed.add_field(name="Включил:", value=f"@{ctx.author.name}")
         await ctx.send(embed=embed)
-
         await ctx.send(f'ОНО РАБОТАЕТ!!! 🔊 (играет - {url}) 🎵', view=MyView(ctx))
-
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
 
 
-# Пропуск песни
+# команда пропуск песни
 @client.command()
 async def forward(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
@@ -194,7 +225,7 @@ async def forward(ctx):
         await play(const.ctx_p, url)
 
 
-# Предыдущая песня
+# команда предыдущая песня
 @client.command()
 async def back(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
@@ -223,7 +254,16 @@ async def playlist(ctx):
         file_reader = csv.reader(m_file)
         for row in file_reader:
             m.append(' '.join(row))
-        await ctx.send('\n'.join(m))
+    embed = disnake.Embed(title='🎶',
+                          color=0x228b22)
+    embed.add_field(name="плейлист", value='\n'.join(m))
+    await ctx.send(embed=embed)
+
+
+# команда вызова меню
+@client.command()
+async def menu(ctx):
+    await ctx.send(view=MyView_menu(ctx))
 
 
 # команда для возобновления голосовой связи, если она была приостановлена
@@ -246,7 +286,21 @@ async def pause(ctx):
         await ctx.send('Бот отдыхает 🔈')
 
 
-# Остановка бота
+# команда для остановки звука
+@client.command()
+async def stop(ctx):
+    voice = get(client.voice_clients, guild=ctx.guild)
+    if voice.is_playing():
+        voice.stop()
+        await ctx.send(f'Музыка OF 🔇')
+        embed = disnake.Embed(title='диджей',
+                              color=0x228b22)
+        embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
+        await ctx.send(embed=embed)
+
+
+# ------функции кнопок--------------------------------------------------------------------------------------------------
+# остановка бота
 async def stop_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
@@ -255,11 +309,13 @@ async def stop_from_button(ctx):
         embed = disnake.Embed(title='диджей',
                               color=0x228b22)
         embed.set_image(
-            url=f'https://yt3.googleusercontent.com/lc-EyUTVJPzpCUzuQwmLjTM6itlMZ0-jhzXDFwA4bcBo8U6vbC58YsSUV1wY1l4HNZsNqHUEwQ=s900-c-k-c0x00ffffff-no-rj')
+            url=f'https://yt3.googleusercontent.com/lc-EyUTVJPzpCUzuQwmLj'
+                f'TM6itlMZ0-jhzXDFwA4bcBo8U6vbC58YsSUV1wY1l4HNZsNqHUEwQ=s900-c-k-c0x00ffffff-no-rj')
         embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
         await ctx.send(embed=embed)
 
 
+# пропуск песни
 async def forward_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
@@ -279,6 +335,7 @@ async def forward_from_button(ctx):
         await play(const.ctx_p, url)
 
 
+# предыдущая песня
 async def back_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
@@ -298,9 +355,21 @@ async def back_from_button(ctx):
         await play(const.ctx_p, url)
 
 
+# показать плейлист
+async def playlist_from_button(ctx):
+    m = []
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+        for row in file_reader:
+            m.append(' '.join(row))
+    embed = disnake.Embed(title='🎶',
+                          color=0x228b22)
+    embed.add_field(name="плейлист", value='\n'.join(m))
+    await ctx.send(embed=embed)
+
+
 async def pause_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
-
     if voice.is_playing():
         voice.pause()
         await ctx.send('Бот отдыхает ')
@@ -314,17 +383,21 @@ async def resume_from_button(ctx):
         await ctx.send('Бот готов продолжить пахать')
 
 
-# команда для остановки звука
-@client.command()
-async def stop(ctx):
-    voice = get(client.voice_clients, guild=ctx.guild)
-    if voice.is_playing():
-        voice.stop()
-        await ctx.send(f'Музыка OF 🔇')
-        embed = disnake.Embed(title='диджей',
-                              color=0x228b22)
-        embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
-        await ctx.send(embed=embed)
+# играет 1 песню из плелиста
+async def play_from_button(ctx):
+    url = ''
+    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
+        file_reader = csv.reader(m_file)
+        for row in file_reader:
+            if row == ["название", "ссылка"]:
+                pass
+            else:
+                url = row[0]
+                break
+    await play(ctx, url)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 # команда для очистки сообщений канала
