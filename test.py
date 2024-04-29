@@ -39,8 +39,24 @@ async def join(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice and voice.is_connected():
         await voice.move_to(channel)
+        embed = discord.Embed(
+            title="",
+            color=0xe100ff,
+            description=f"вход")
+        embed.set_image(url=f'https://cdna.artstation.com/p/assets/images/images/008/710/076/original/gabriel-casamasso-turntable.gif?1514763325')
+        embed.set_footer(text=f"Команду запросил {ctx.author.name}")
+        await ctx.send(embed=embed)
     else:
         voice = await channel.connect()
+        embed = discord.Embed(
+            title="",
+            color=0xe100ff,
+            description=f"вход")
+        embed.set_image(
+            url=f'https://cdna.artstation.com/p/assets/images/images/008/710/076/original/gabriel-casamasso-turntable.gif?1514763325')
+        embed.set_footer(text=f"Команду запросил {ctx.author.name}")
+        await ctx.send(embed=embed)
+
 
 
 # команда изгнать бота из голосового канала
@@ -143,11 +159,15 @@ async def play(ctx, url, name_title=None):
         spisok_mus.append(URL)
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
-        await ctx.send(f'ОНО РАБОТАЕТ!!! 🔊 (играет - {url}) 🎵', view=MyView(ctx))
         embed = disnake.Embed(title='диджей', description=f"музыка {name}",
                               color=0x228b22)
+        embed.set_image(
+            url=f'https://i.pinimg.com/originals/82/83/c7/8283c7b7b68f765e2b3bf46fe9c3682f.gif')
         embed.add_field(name="Включил:", value=f"@{ctx.author.name}")
         await ctx.send(embed=embed)
+
+        await ctx.send(f'ОНО РАБОТАЕТ!!! 🔊 (играет - {url}) 🎵', view=MyView(ctx))
+
     else:
         await ctx.send("Бот уже играет другую музыку")
         return
@@ -234,6 +254,8 @@ async def stop_from_button(ctx):
         await ctx.send(f'Музыка OF 🔇')
         embed = disnake.Embed(title='диджей',
                               color=0x228b22)
+        embed.set_image(
+            url=f'https://yt3.googleusercontent.com/lc-EyUTVJPzpCUzuQwmLjTM6itlMZ0-jhzXDFwA4bcBo8U6vbC58YsSUV1wY1l4HNZsNqHUEwQ=s900-c-k-c0x00ffffff-no-rj')
         embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
         await ctx.send(embed=embed)
 
