@@ -209,6 +209,7 @@ async def play(ctx, url, name_title=None):
 async def forward(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await ctx.channel.purge(limit=2)
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
         file_reader = csv.reader(m_file)
 
@@ -230,6 +231,7 @@ async def forward(ctx):
 async def back(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await ctx.channel.purge(limit=2)
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
         file_reader = csv.reader(m_file)
 
@@ -270,7 +272,6 @@ async def menu(ctx):
 @client.command()
 async def resume(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
-
     if not voice.is_playing():
         voice.resume()
         await ctx.send('Бот готов продолжить пахать')
@@ -280,7 +281,6 @@ async def resume(ctx):
 @client.command()
 async def pause(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
-
     if voice.is_playing():
         voice.pause()
         await ctx.send('Бот отдыхает 🔈')
@@ -292,6 +292,7 @@ async def stop(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.stop()
+        await ctx.channel.purge(limit=2)
         await ctx.send(f'Музыка OF 🔇')
         embed = disnake.Embed(title='диджей',
                               color=0x228b22)
@@ -305,6 +306,7 @@ async def stop_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.stop()
+        await ctx.channel.purge(limit=2)
         await ctx.send(f'Музыка OF 🔇')
         embed = disnake.Embed(title='диджей',
                               color=0x228b22)
@@ -319,6 +321,7 @@ async def stop_from_button(ctx):
 async def forward_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await ctx.channel.purge(limit=2)
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
         file_reader = csv.reader(m_file)
 
@@ -339,6 +342,7 @@ async def forward_from_button(ctx):
 async def back_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await ctx.channel.purge(limit=2)
     with open('musics.csv', mode='r', encoding='utf-8') as m_file:
         file_reader = csv.reader(m_file)
 
@@ -377,7 +381,6 @@ async def pause_from_button(ctx):
 
 async def resume_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
-
     if not voice.is_playing():
         voice.resume()
         await ctx.send('Бот готов продолжить пахать')
