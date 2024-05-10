@@ -226,14 +226,18 @@ async def forward(ctx):
     voice.stop()
     url = ''
     await ctx.channel.purge(limit=3)
-    result = cursor.execute('SELECT names, url FROM media').fetchall()
-    for i in range(len(result)):
-        if result[i][0] == const.play_mus:
-            if i + 1 < len(result):
-                url = result[i + 1][0]
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+    for i in range(len(spisok_mus)):
+        if spisok_mus[i][0] == const.play_mus:
+            if i + 1 < len(spisok_mus):
+                url = spisok_mus[i + 1][0]
                 break
             else:
-                url = result[0][0]
+                url = spisok_mus[0][0]
     await play(ctx, url)
 
 
