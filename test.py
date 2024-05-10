@@ -10,19 +10,22 @@ from youtube_dl import YoutubeDL
 from config import TOKEN
 import disnake
 import const
+import sqlite3
+
+connection = sqlite3.connect('playlist_db')
+cursor = connection.cursor()
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS media (
+    names TEXT UNIQUE,
+    url   TEXT UNIQUE
+)''')
+connection.commit()
 
 load_dotenv()
 # назначение префикса для команд
 client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
 players = {}
 spisok_mus = []
-
-
-# with open('musics.csv', mode='w', encoding='utf-8') as m_file:
-#     names = ["название", "ссылка"]
-#     file_writer = csv.DictWriter(m_file, delimiter=",",
-#                                  lineterminator="\r", fieldnames=names)
-#     file_writer.writeheader()
 
 
 # Проверка коммита
@@ -34,6 +37,7 @@ async def on_ready():
 
 # команда присоединение бота к голосовому каналу
 @client.command()
+@commands.has_role("король обезьян")
 async def join(ctx):
     channel = ctx.message.author.voice.channel
     voice = get(client.voice_clients, guild=ctx.guild)
@@ -124,6 +128,7 @@ class MyView_menu(discord.ui.View):
 
 # команда для воспроизведения звука с URL-адреса youtube
 @client.command()
+@commands.has_role("король обезьян")
 async def play(ctx, url, name_title=None):
     const.ctx_p = ctx
     YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
@@ -142,50 +147,23 @@ async def play(ctx, url, name_title=None):
         await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
 
     if not voice.is_playing():
-        count = 0
-        # проверка плейлиста
-        with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-            file_reader = csv.reader(m_file)
-            i = 0
-            for row in file_reader:
-                i += 1
-                if url == row[-1]:
-                    await ctx.send(f"Этот трек есть в листе, название - {row[0]}")
-                    const.line = i
-                    count += 1
-                if url == row[0]:
-                    url = row[-1]
-                    const.line = i
+        result = cursor.execute('SELECT names, url FROM media').fetchall()
+        for title in result:
+            if url == title[0]:
+                url = title[1]
+                const.play_mus = title[0]
+                break
         try:
             with YoutubeDL(YDL_OPTIONS) as ydl:
                 info = ydl.extract_info(url, download=False)
         except Exception:
             await ctx.send('Ошибка! Нет такого имени')
         name = info['title']
-
-        # добавление трека в плейлист
-        if name_title and count == 0:
-            a = 0
-            with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-                file_reader = csv.reader(m_file)
-                for row in file_reader:
-                    if row == ["название", "ссылка"]:
-                        pass
-                    else:
-                        if name_title in row:
-                            if name_title == row[0]:
-                                await ctx.send("Это название уже используется, придумайте другое")
-                                a += 1
-                                break
-                        else:
-                            if a == 0:
-                                with open('musics.csv', mode='a', encoding='utf-8') as m_file:
-                                    names = ["название", "ссылка"]
-                                    file_writer = csv.DictWriter(m_file, delimiter=",", lineterminator="\r",
-                                                                 fieldnames=names)
-                                    file_writer.writerow({"название": name_title, "ссылка": url})
-                                    a += 1
-                                    break
+        if name_title:
+            cursor.execute(f'SELECT names FROM media WHERE names="{name_title}"')
+            if cursor.fetchone() is None:
+                cursor.execute(f"INSERT INTO media (names, url) VALUES ('{name_title}', '{url}')")
+                connection.commit()
 
         URL = info['url']
         spisok_mus.append(URL)
@@ -206,70 +184,79 @@ async def play(ctx, url, name_title=None):
 
 # команда пропуск песни
 @client.command()
+@commands.has_role("король обезьян")
 async def forward(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
-    await ctx.channel.purge(limit=2)
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-
-        line_next = const.line + 1
-        if line_next > const.len_sp:
-            line_next = 2
-        count = 0
-        for row in file_reader:
-            count += 1
-            if count == line_next:
-                row_new = row
+    url = ''
+    await ctx.channel.purge(limit=3)
+    result = cursor.execute('SELECT names, url FROM media').fetchall()
+    for i in range(len(result)):
+        if result[i][0] == const.play_mus:
+            if i + 1 < len(result):
+                url = result[i + 1][0]
                 break
-        url = row_new[0]
-        await play(const.ctx_p, url)
+            else:
+                url = result[0][0]
+    await play(ctx, url)
 
 
 # команда предыдущая песня
 @client.command()
+@commands.has_role("король обезьян")
 async def back(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
-    await ctx.channel.purge(limit=2)
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-
-        line_next = const.line - 1
-        if line_next <= 1:
-            line_next = const.len_sp
-        count = 0
-        for row in file_reader:
-            count += 1
-            if count == line_next:
-                row_new = row
+    url = ''
+    await ctx.channel.purge(limit=3)
+    result = cursor.execute('SELECT names, url FROM media').fetchall()
+    for i in range(len(result)):
+        if result[i][0] == const.play_mus:
+            if i > 0:
+                url = result[i - 1][0]
                 break
-        url = row_new[0]
-        await play(const.ctx_p, url)
+            else:
+                url = result[-1][0]
+    await play(ctx, url)
 
 
 # команда показать плейлист
 @client.command()
 async def playlist(ctx):
+    result = cursor.execute(f'SELECT names, url FROM media').fetchall()
     m = []
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-        for row in file_reader:
-            m.append(' '.join(row))
+    for mus in result:
+        mus = ' '.join(mus)
+        m.append(mus)
     embed = disnake.Embed(title='🎶',
                           color=0x228b22)
     embed.add_field(name="плейлист", value='\n'.join(m))
     await ctx.send(embed=embed)
 
 
+@client.command()
+@commands.has_role("король обезьян")
+async def delete(ctx, title):
+    try:
+        result = cursor.execute(f'SELECT url FROM media WHERE names="{title}"').fetchall()
+        cursor.execute(f'DELETE FROM media WHERE names="{title}"')
+        await ctx.send(f'Трек {result[0][0]} под названием "{title}" был успешно удален.')
+    except Exception:
+        await ctx.send('НЕ УДАЛОСЬ УДАЛИТЬ. Проверьте правильно ли написано название и есть ли оно в плейлисте')
+        await playlist(ctx)
+    connection.commit()
+
+
 # команда вызова меню
 @client.command()
+@commands.has_role("король обезьян")
 async def menu(ctx):
     await ctx.send(view=MyView_menu(ctx))
 
 
 # команда для возобновления голосовой связи, если она была приостановлена
 @client.command()
+@commands.has_role("король обезьян")
 async def resume(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if not voice.is_playing():
@@ -279,6 +266,7 @@ async def resume(ctx):
 
 # команда для возобновления звука, если он был приостановлен
 @client.command()
+@commands.has_role("король обезьян")
 async def pause(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
@@ -288,6 +276,7 @@ async def pause(ctx):
 
 # команда для остановки звука
 @client.command()
+@commands.has_role("король обезьян")
 async def stop(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
@@ -321,51 +310,43 @@ async def stop_from_button(ctx):
 async def forward_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    url = ''
     await ctx.channel.purge(limit=2)
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-
-        line_next = const.line + 1
-        if line_next > const.len_sp:
-            line_next = 2
-        count = 0
-        for row in file_reader:
-            count += 1
-            if count == line_next:
-                row_new = row
+    result = cursor.execute('SELECT names, url FROM media').fetchall()
+    for i in range(len(result)):
+        if result[i][0] == const.play_mus:
+            if i + 1 < len(result):
+                url = result[i + 1][0]
                 break
-        url = row_new[0]
-        await play(const.ctx_p, url)
+            else:
+                url = result[0][0]
+    await play(ctx, url)
 
 
 # предыдущая песня
 async def back_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    url = ''
     await ctx.channel.purge(limit=2)
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-
-        line_next = const.line - 1
-        if line_next <= 1:
-            line_next = const.len_sp
-        count = 0
-        for row in file_reader:
-            count += 1
-            if count == line_next:
-                row_new = row
+    result = cursor.execute('SELECT names, url FROM media').fetchall()
+    for i in range(len(result)):
+        if result[i][0] == const.play_mus:
+            if i > 0:
+                url = result[i - 1][0]
                 break
-        url = row_new[0]
-        await play(const.ctx_p, url)
+            else:
+                url = result[-1][0]
+    await play(ctx, url)
 
 
 # показать плейлист
 async def playlist_from_button(ctx):
+    result = cursor.execute(f'SELECT names, url FROM media').fetchall()
     m = []
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-        for row in file_reader:
-            m.append(' '.join(row))
+    for mus in result:
+        mus = ' '.join(mus)
+        m.append(mus)
     embed = disnake.Embed(title='🎶',
                           color=0x228b22)
     embed.add_field(name="плейлист", value='\n'.join(m))
@@ -389,14 +370,8 @@ async def resume_from_button(ctx):
 # играет 1 песню из плелиста
 async def play_from_button(ctx):
     url = ''
-    with open('musics.csv', mode='r', encoding='utf-8') as m_file:
-        file_reader = csv.reader(m_file)
-        for row in file_reader:
-            if row == ["название", "ссылка"]:
-                pass
-            else:
-                url = row[0]
-                break
+    result = cursor.execute(f'SELECT names, url FROM media').fetchall()
+    url = result[0][0]
     await play(ctx, url)
 
 
