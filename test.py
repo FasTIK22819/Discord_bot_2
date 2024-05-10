@@ -8,11 +8,39 @@ from discord import FFmpegPCMAudio
 from discord import TextChannel
 from youtube_dl import YoutubeDL
 from config import TOKEN
+from flask import Flask
 import disnake
 import const
 import sqlite3
+from data import db_session
+from data.user import User
 
-connection = sqlite3.connect('playlist_db')
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
+user = User()
+
+
+def main():
+    db_session.global_init("db/music.db")
+    app.run()
+
+
+def test_orm_user():
+    db_session.global_init("db/music.db")
+    from data.user import User
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+    print(spisok_mus)
+
+
+if __name__ == '__main__':
+    test_orm_user()
+
+connection = sqlite3.connect('playlist_db.db')
 cursor = connection.cursor()
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS media (
@@ -25,7 +53,7 @@ load_dotenv()
 # назначение префикса для команд
 client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
 players = {}
-spisok_mus = []
+
 
 
 # Проверка коммита
@@ -147,8 +175,16 @@ async def play(ctx, url, name_title=None):
         await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
 
     if not voice.is_playing():
-        result = cursor.execute('SELECT names, url FROM media').fetchall()
-        for title in result:
+        db_sess = db_session.create_session()
+        musics = db_sess.query(User).all()
+        spisok_mus = []
+        spisok_title = []
+        spisok_url = []
+        for music in musics:
+            spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+            spisok_title.append(str(music).split()[1])
+            spisok_url.append(str(music).split()[2])
+        for title in spisok_mus:
             if url == title[0]:
                 url = title[1]
                 const.play_mus = title[0]
@@ -160,13 +196,13 @@ async def play(ctx, url, name_title=None):
             await ctx.send('Ошибка! Нет такого имени')
         name = info['title']
         if name_title:
-            cursor.execute(f'SELECT names FROM media WHERE names="{name_title}"')
-            if cursor.fetchone() is None:
-                cursor.execute(f"INSERT INTO media (names, url) VALUES ('{name_title}', '{url}')")
-                connection.commit()
+            if name_title not in spisok_title:
+                if url not in spisok_url:
+                    add = User(name=name_title, url=url)
+                    db_sess.add(add)
+                    db_sess.commit()
 
         URL = info['url']
-        spisok_mus.append(URL)
         voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         voice.is_playing()
         # информация кто использовал команду
@@ -209,23 +245,31 @@ async def back(ctx):
     voice.stop()
     url = ''
     await ctx.channel.purge(limit=3)
-    result = cursor.execute('SELECT names, url FROM media').fetchall()
-    for i in range(len(result)):
-        if result[i][0] == const.play_mus:
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+    for i in range(len(spisok_mus)):
+        if spisok_mus[i][0] == const.play_mus:
             if i > 0:
-                url = result[i - 1][0]
+                url = spisok_mus[i - 1][0]
                 break
             else:
-                url = result[-1][0]
+                url = spisok_mus[-1][0]
     await play(ctx, url)
 
 
 # команда показать плейлист
 @client.command()
 async def playlist(ctx):
-    result = cursor.execute(f'SELECT names, url FROM media').fetchall()
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
     m = []
-    for mus in result:
+    for mus in spisok_mus:
         mus = ' '.join(mus)
         m.append(mus)
     embed = disnake.Embed(title='🎶',
@@ -238,9 +282,16 @@ async def playlist(ctx):
 @commands.has_role("король обезьян")
 async def delete(ctx, title):
     try:
-        result = cursor.execute(f'SELECT url FROM media WHERE names="{title}"').fetchall()
-        cursor.execute(f'DELETE FROM media WHERE names="{title}"')
-        await ctx.send(f'Трек {result[0][0]} под названием "{title}" был успешно удален.')
+        db_sess = db_session.create_session()
+        musics = db_sess.query(User).all()
+        spisok_mus = []
+        for music in musics:
+            if title == str(music).split()[1]:
+                spisok_mus.append(str(music).split()[1])
+                print(123)
+                db_sess.query(User).filter(User.name == title).delete()
+                db_sess.commit()
+        await ctx.send(f'Трек {spisok_mus[0]} под названием "{title}" был успешно удален.')
     except Exception:
         await ctx.send('НЕ УДАЛОСЬ УДАЛИТЬ. Проверьте правильно ли написано название и есть ли оно в плейлисте')
         await playlist(ctx)
@@ -312,14 +363,18 @@ async def forward_from_button(ctx):
     voice.stop()
     url = ''
     await ctx.channel.purge(limit=2)
-    result = cursor.execute('SELECT names, url FROM media').fetchall()
-    for i in range(len(result)):
-        if result[i][0] == const.play_mus:
-            if i + 1 < len(result):
-                url = result[i + 1][0]
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+    for i in range(len(spisok_mus)):
+        if spisok_mus[i][0] == const.play_mus:
+            if i + 1 < len(spisok_mus):
+                url = spisok_mus[i + 1][0]
                 break
             else:
-                url = result[0][0]
+                url = spisok_mus[0][0]
     await play(ctx, url)
 
 
@@ -329,22 +384,30 @@ async def back_from_button(ctx):
     voice.stop()
     url = ''
     await ctx.channel.purge(limit=2)
-    result = cursor.execute('SELECT names, url FROM media').fetchall()
-    for i in range(len(result)):
-        if result[i][0] == const.play_mus:
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+    for i in range(len(spisok_mus)):
+        if spisok_mus[i][0] == const.play_mus:
             if i > 0:
-                url = result[i - 1][0]
+                url = spisok_mus[i - 1][0]
                 break
             else:
-                url = result[-1][0]
+                url = spisok_mus[-1][0]
     await play(ctx, url)
 
 
 # показать плейлист
 async def playlist_from_button(ctx):
-    result = cursor.execute(f'SELECT names, url FROM media').fetchall()
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
     m = []
-    for mus in result:
+    for mus in spisok_mus:
         mus = ' '.join(mus)
         m.append(mus)
     embed = disnake.Embed(title='🎶',
