@@ -224,6 +224,34 @@ async def play_next(ctx, i=None):
         await play(ctx, url=url)
 
 
+@client.command()
+@commands.has_role("король обезьян")
+async def add(ctx, url, name_title=None):
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    spisok_mus = []
+    spisok_title = []
+    spisok_url = []
+    for music in musics:
+        spisok_mus.append([str(music).split()[1], str(music).split()[2]])
+        spisok_title.append(str(music).split()[1])
+        spisok_url.append(str(music).split()[2])
+    for title in spisok_mus:
+        if url == title[0]:
+            url = title[1]
+            const.play_mus = title[0]
+            break
+    if name_title:
+        if name_title not in spisok_title:
+            if url not in spisok_url:
+                add = User(name=name_title, url=url)
+                db_sess.add(add)
+                db_sess.commit()
+                await ctx.send(f'Успешно добавлен трек: {url} под названием {name_title}')
+    else:
+        await ctx.send('Нет имени')
+
+
 # команда пропуск песни
 @client.command()
 @commands.has_role("король обезьян")
