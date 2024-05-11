@@ -253,15 +253,16 @@ async def add(ctx, url, name_title=None):
 
 @client.command()
 @commands.has_role("король обезьян")
-async def replace(ctx, name1, name2):
+async def replace(ctx, name_new_1, name_new_2):
     db_sess = db_session.create_session()
     musics = db_sess.query(User).all()
-    name_1 = db_sess.query(User).filter(User.name == name1).first()
-    name_2 = db_sess.query(User).filter(User.name == name2).first()
-    name_1.name = name2
-    name_2.name = name1
-    name_1.url, name_2.url = name_2.url, name_1.url
+    string_first = db_sess.query(User).filter(User.name is name_new_1).first()
+    string_second = db_sess.query(User).filter(User.name is name_new_2).first()
+    string_first.name = name_new_2
+    string_second.name = name_new_1
+    string_first.url, string_second.url = string_second.url, string_first.url
     db_sess.commit()
+    await ctx.send('Success!')
 # команда пропуск песни
 
 
