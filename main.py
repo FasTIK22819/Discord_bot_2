@@ -203,21 +203,25 @@ async def play(ctx, url, name_title=None):
         return
 
 
-queues = {}
+db_sess = db_session.create_session()
+musics = db_sess.query(User).all()
+queues = []
+for music in musics:
+    queues.append(str(music).split()[2])
 
 
-async def play_next(ctx):
-    if queues[ctx.guild.id] != []:
-        url = queues[ctx.guild.id].pop(0)
+async def play_next(ctx, i=None):
+    url = ''
+    if queues:
+        if i:
+            i = i
+        else:
+            i = 0
+        if i < len(queues):
+            url = queues[i]
+        else:
+            url = queues[0]
         await play(ctx, url=url)
-
-
-@client.command()
-async def q(ctx, url):
-    if ctx.guild.id not in queues:
-        queues[ctx.guild.id] = []
-    queues[ctx.guild.id].append(url)
-    await ctx.send("Added to queue!")
 
 
 # команда пропуск песни
