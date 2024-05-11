@@ -255,17 +255,16 @@ async def add(ctx, url, name_title=None):
 @commands.has_role("король обезьян")
 async def replace(ctx, name_new_1, name_new_2):
     db_sess = db_session.create_session()
-    musics = db_sess.query(User).all()
-    string_first = db_sess.query(User).filter(User.name is name_new_1).first()
-    string_second = db_sess.query(User).filter(User.name is name_new_2).first()
+    string_first = db_sess.query(User).filter(User.name == name_new_1).first()
+    string_second = db_sess.query(User).filter(User.name == name_new_2).first()
     string_first.name = name_new_2
     string_second.name = name_new_1
     string_first.url, string_second.url = string_second.url, string_first.url
     db_sess.commit()
     await ctx.send('Success!')
+
+
 # команда пропуск песни
-
-
 @client.command()
 @commands.has_role("король обезьян")
 async def forward(ctx):
@@ -341,8 +340,7 @@ async def delete(ctx, title):
         for music in musics:
             if title == str(music).split()[1]:
                 spisok_mus.append(str(music).split()[1])
-                print(123)
-                db_sess.query(User).filter(User.name is title).delete()
+                db_sess.query(User).filter(User.name == title).delete()
                 db_sess.commit()
         await ctx.send(f'Трек {spisok_mus[0]} под названием "{title}" был успешно удален.')
     except Exception:
@@ -394,6 +392,16 @@ async def stop(ctx):
                 f'TM6itlMZ0-jhzXDFwA4bcBo8U6vbC58YsSUV1wY1l4HNZsNqHUEwQ=s900-c-k-c0x00ffffff-no-rj')
         embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
         await ctx.send(embed=embed)
+
+
+@client.command()
+@commands.has_role("король обезьян")
+async def rename(ctx, old_name, new_name):
+    db_sess = db_session.create_session()
+    string_first = db_sess.query(User).filter(User.name == old_name).first()
+    string_first.name = new_name
+    db_sess.commit()
+    await ctx.send('Трек успешно переименован')
 
 
 # ------функции кнопок--------------------------------------------------------------------------------------------------
