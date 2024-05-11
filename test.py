@@ -1,18 +1,12 @@
 import discord
-import os
-import csv
 from dotenv import load_dotenv
 from discord.ext import commands
 from discord.utils import get
-from discord import FFmpegPCMAudio
-from discord import TextChannel
 from youtube_dl import YoutubeDL
 from config import TOKEN
 from flask import Flask
 import disnake
-import const
-import sqlite3
-from data import db_session
+from data import db_session, const
 from data.user import User
 import asyncio
 
