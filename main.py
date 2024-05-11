@@ -183,7 +183,7 @@ async def play(ctx, url, name_title=None):
                     add = User(name=name_title, url=url)
                     db_sess.add(add)
                     db_sess.commit()
-
+                    await ctx.send(f'Успешно добавлен трек: {url} под названием {name_title}')
         URL = info['url']
         # voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
         # voice.is_playing()
