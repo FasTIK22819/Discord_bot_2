@@ -14,6 +14,7 @@ import const
 import sqlite3
 from data import db_session
 from data.user import User
+import asyncio
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
@@ -155,11 +156,7 @@ async def play(ctx, url, name_title=None):
 
     # вход в голосовой канал
     try:
-        channel = ctx.message.author.voice.channel
-        if voice and voice.is_connected():
-            await voice.move_to(channel)
-        else:
-            voice = await channel.connect()
+        ctx.message.author.voice.channel
     except Exception:
         await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
 
@@ -178,9 +175,11 @@ async def play(ctx, url, name_title=None):
                 url = title[1]
                 const.play_mus = title[0]
                 break
+        loop = asyncio.get_event_loop()
         try:
             with YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(url, download=False)
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
+                # info = ydl.extract_info(url, download=False)
         except Exception:
             await ctx.send('Ошибка! Нет такого имени')
         name = info['title']
@@ -192,8 +191,11 @@ async def play(ctx, url, name_title=None):
                     db_sess.commit()
 
         URL = info['url']
-        voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
-        voice.is_playing()
+        # voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
+        # voice.is_playing()
+        # player = discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS)
+        player = discord.FFmpegOpusAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS)
+        voice.play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
         # информация кто использовал команду
         embed = disnake.Embed(title='диджей', description=f"музыка {name}",
                               color=0x228b22)
@@ -207,12 +209,31 @@ async def play(ctx, url, name_title=None):
         return
 
 
+queues = {}
+
+
+async def play_next(ctx):
+    if queues[ctx.guild.id] != []:
+        url = queues[ctx.guild.id].pop(0)
+        await play(ctx, url=url)
+
+
+@client.command()
+async def q(ctx, url):
+    if ctx.guild.id not in queues:
+        queues[ctx.guild.id] = []
+    queues[ctx.guild.id].append(url)
+    await ctx.send("Added to queue!")
+
+
 # команда пропуск песни
 @client.command()
 @commands.has_role("король обезьян")
 async def forward(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await voice.disconnect()
+
     url = ''
     await ctx.channel.purge(limit=3)
     db_sess = db_session.create_session()
@@ -324,6 +345,7 @@ async def stop(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.stop()
+        del voice
         await ctx.channel.purge(limit=2)
         await ctx.send(f'Музыка OF 🔇')
         embed = disnake.Embed(title='диджей',
@@ -341,6 +363,8 @@ async def stop_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.stop()
+        await voice.disconnect()
+        del voice
         await ctx.channel.purge(limit=2)
         await ctx.send(f'Музыка OF 🔇')
         embed = disnake.Embed(title='диджей',
@@ -356,6 +380,15 @@ async def stop_from_button(ctx):
 async def forward_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await voice.disconnect()
+    try:
+        channel = ctx.message.author.voice.channel
+        if voice and voice.is_connected():
+            await voice.move_to(channel)
+        else:
+            voice = await channel.connect()
+    except Exception:
+        await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
     url = ''
     await ctx.channel.purge(limit=2)
     db_sess = db_session.create_session()
@@ -377,6 +410,15 @@ async def forward_from_button(ctx):
 async def back_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
+    await voice.disconnect()
+    try:
+        channel = ctx.message.author.voice.channel
+        if voice and voice.is_connected():
+            await voice.move_to(channel)
+        else:
+            voice = await channel.connect()
+    except Exception:
+        await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
     url = ''
     await ctx.channel.purge(limit=2)
     db_sess = db_session.create_session()
@@ -411,7 +453,6 @@ async def playlist_from_button(ctx):
     await ctx.send(embed=embed)
 
 
-@client.event
 async def pause_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
@@ -419,7 +460,6 @@ async def pause_from_button(ctx):
         await ctx.send('Бот отдыхает ')
 
 
-@client.event
 async def resume_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if not voice.is_playing():
