@@ -28,7 +28,6 @@ def test_orm_user():
     spisok_mus = []
     for music in musics:
         spisok_mus.append([str(music).split()[1], str(music).split()[2]])
-    print(spisok_mus)
 
 
 if __name__ == '__main__':
@@ -252,7 +251,20 @@ async def add(ctx, url, name_title=None):
         await ctx.send('Нет имени')
 
 
+@client.command()
+@commands.has_role("король обезьян")
+async def replace(ctx, name1, name2):
+    db_sess = db_session.create_session()
+    musics = db_sess.query(User).all()
+    name_1 = db_sess.query(User).filter(User.name == name1).first()
+    name_2 = db_sess.query(User).filter(User.name == name2).first()
+    name_1.name = name2
+    name_2.name = name1
+    name_1.url, name_2.url = name_2.url, name_1.url
+    db_sess.commit()
 # команда пропуск песни
+
+
 @client.command()
 @commands.has_role("король обезьян")
 async def forward(ctx):
