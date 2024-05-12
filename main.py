@@ -276,6 +276,20 @@ async def replace(ctx, name_new_1, name_new_2):
     await ctx.send('Success!')
 
 
+# команда перемещения музыки по номеру
+@client.command()
+@commands.has_role("король обезьян")
+async def id_replace(ctx, name_title, id):
+    db_sess = db_session.create_session()
+    string_first = db_sess.query(User).filter(User.name == name_title).first()
+    string_second = db_sess.query(User).filter(User.id == id).first()
+    string_first.name = string_second.name
+    string_second.name = name_title
+    string_first.url, string_second.url = string_second.url, string_first.url
+    db_sess.commit()
+    await ctx.send('Success!')
+
+
 # команда пропуск песни
 @client.command()
 @commands.has_role("король обезьян")
