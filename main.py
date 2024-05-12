@@ -419,7 +419,7 @@ async def stop(ctx):
             url=f'https://yt3.googleusercontent.com/lc-EyUTVJPzpCUzuQwmLj'
                 f'TM6itlMZ0-jhzXDFwA4bcBo8U6vbC58YsSUV1wY1l4HNZsNqHUEwQ=s900-c-k-c0x00ffffff-no-rj')
         embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, delete_after=30)
 
 
 # команда переименовывания трека
@@ -449,7 +449,7 @@ async def stop_from_button(ctx):
             url=f'https://yt3.googleusercontent.com/lc-EyUTVJPzpCUzuQwmLj'
                 f'TM6itlMZ0-jhzXDFwA4bcBo8U6vbC58YsSUV1wY1l4HNZsNqHUEwQ=s900-c-k-c0x00ffffff-no-rj')
         embed.add_field(name="Выключил:", value=f"@{ctx.author.name}")
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, delete_after=30)
 
 
 # пропуск песни
