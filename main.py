@@ -50,7 +50,10 @@ async def on_ready():
 @client.command()
 @commands.has_role("король обезьян")
 async def join(ctx):
-    channel = ctx.message.author.voice.channel
+    try:
+        channel = ctx.message.author.voice.channel
+    except Exception:
+        await ctx.send('Бот поет только в пещере(зайдите в голосовой канал и добавь туда бота (join)')
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice and voice.is_connected():
         await voice.move_to(channel)
@@ -145,14 +148,14 @@ async def play(ctx, url, name_title=None):
     YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
     FFMPEG_OPTIONS = {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+
+    # проверка на вход в голосовой канал
     voice = get(client.voice_clients, guild=ctx.guild)
-
-    # вход в голосовой канал
     try:
-        ctx.message.author.voice.channel
+        channel = ctx.message.author.voice.channel
     except Exception:
-        await ctx.send('Бот поет только в пещере(зайдите в голосовой канал)')
-
+        await ctx.send('Бот поет только в пещере(зайдите в голосовой канал и добавь туда бота (join)')
+    # воспроизведение музыки
     if not voice.is_playing():
         db_sess = db_session.create_session()
         musics = db_sess.query(User).all()
@@ -172,10 +175,10 @@ async def play(ctx, url, name_title=None):
         try:
             with YoutubeDL(YDL_OPTIONS) as ydl:
                 info = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
-                # info = ydl.extract_info(url, download=False)
         except Exception:
             await ctx.send('Ошибка! Нет такого имени')
         name = info['title']
+        # добавление в плейлист
         if name_title:
             if name_title not in spisok_title:
                 if url not in spisok_url:
@@ -183,10 +186,11 @@ async def play(ctx, url, name_title=None):
                     db_sess.add(add)
                     db_sess.commit()
                     await ctx.send(f'Успешно добавлен трек: {url} под названием {name_title}')
+                else:
+                    await ctx.send(f'Этот трек уже добавлен')
+            else:
+                await ctx.send(f'Это название уже используется')
         URL = info['url']
-        # voice.play(discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS))
-        # voice.is_playing()
-        # player = discord.FFmpegPCMAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS)
         player = discord.FFmpegOpusAudio(URL, executable="ffmpeg/ffmpeg.exe", **FFMPEG_OPTIONS)
         voice.play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
         # информация кто использовал команду
@@ -202,6 +206,7 @@ async def play(ctx, url, name_title=None):
         return
 
 
+# создание очереди из плейлиста
 db_sess = db_session.create_session()
 musics = db_sess.query(User).all()
 queues = []
@@ -209,6 +214,7 @@ for music in musics:
     queues.append(str(music).split()[2])
 
 
+# функция воспроизведения музыки из очереди
 async def play_next(ctx, i=None):
     url = ''
     if queues:
@@ -223,6 +229,7 @@ async def play_next(ctx, i=None):
         await play(ctx, url=url)
 
 
+# команда добавить трек в плейлист не проигрывая его
 @client.command()
 @commands.has_role("король обезьян")
 async def add(ctx, url, name_title=None):
@@ -247,10 +254,15 @@ async def add(ctx, url, name_title=None):
                 db_sess.add(add)
                 db_sess.commit()
                 await ctx.send(f'Успешно добавлен трек: {url} под названием {name_title}')
+            else:
+                await ctx.send(f'Этот трек уже добавлен')
+        else:
+            await ctx.send(f'Это название уже используется')
     else:
         await ctx.send('Нет имени')
 
 
+# команда перемещения музыки по имени
 @client.command()
 @commands.has_role("король обезьян")
 async def replace(ctx, name_new_1, name_new_2):
@@ -330,6 +342,7 @@ async def playlist(ctx):
     await ctx.send(embed=embed)
 
 
+# команда удаления трека из плейлиста
 @client.command()
 @commands.has_role("король обезьян")
 async def delete(ctx, title):
@@ -362,7 +375,8 @@ async def resume(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if not voice.is_playing():
         voice.resume()
-        await ctx.send('Бот готов продолжить пахать')
+        await ctx.channel.purge(limit=1)
+        await ctx.send('Бот готов продолжить пахать', delete_after=5)
 
 
 # команда для возобновления звука, если он был приостановлен
@@ -394,6 +408,7 @@ async def stop(ctx):
         await ctx.send(embed=embed)
 
 
+# команда переименовывания трека
 @client.command()
 @commands.has_role("король обезьян")
 async def rename(ctx, old_name, new_name):
@@ -500,6 +515,7 @@ async def playlist_from_button(ctx):
     await ctx.send(embed=embed)
 
 
+# пауза
 async def pause_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if voice.is_playing():
@@ -507,14 +523,16 @@ async def pause_from_button(ctx):
         await ctx.send('Бот отдыхает ')
 
 
+# продолжить
 async def resume_from_button(ctx):
     voice = get(client.voice_clients, guild=ctx.guild)
     if not voice.is_playing():
         voice.resume()
-        await ctx.send('Бот готов продолжить пахать')
+        await ctx.channel.purge(limit=1)
+        await ctx.send('Бот готов продолжить пахать', delete_after=5)
 
 
-# играет 1 песню из плелиста
+# играет 1 песню из плейлиста
 async def play_from_button(ctx):
     db_sess = db_session.create_session()
     musics = db_sess.query(User).all()
